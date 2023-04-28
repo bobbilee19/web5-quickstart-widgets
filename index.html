@@ -62,7 +62,7 @@ main .output {
   <section id="did-create">
     <h1>Create a Decentralized Identifier (DID)</h1>
     <div class="input">
-      <pre><code>let did = await web5.did.create('ion');</code></pre>
+      <pre><code>const did = await web5.did.create('ion');</code></pre>
       <button>Run!</button>
     </div>
     <div class="output">
@@ -77,51 +77,34 @@ main .output {
   <section id="did-register">
     <h1>Store DID</h1>
     <div class="input">
-      <pre><code>await web5.did.manager.set(did.id, {
-  connected: true,
-  endpoint: 'app://dwn',
-  keys: {
-    ['#dwn']: {
-      keyPair: did.keys.find(key => key.id === 'dwn').keyPair,
-    },
-  },
-});</code></pre>
-      <button disabled>Run!</button>
-    </div>
+      <pre><code>
+        await web5.did.manager.set(did.id, {
+          connected: true,
+          endpoint: 'app://dwn',
+          keys: {
+            ['#dwn']: {
+              keyPair: did.keys.find(key => key.id === 'dwn').keyPair,
+            },
+          },
+        });
+</code></pre>
+  <button disabled>Run!</button>
+  </div>
     <div class="output"></div>
   </section>
   <section id="dwn-write">
     <h1>Write some data</h1>
     <div class="input">
-      <pre><code>let writeResult = await web5.dwn.records.write(did.id, {
-  author: did.id,
-  data,
-  message: {
-    dataFormat: 'image/png',
-  },
-});</code></pre>
-      <input type="file" accept="image/png" disabled>
-      <button disabled>Run!</button>
-      <progress></progress>
-    </div>
-    <div class="output">
-      <details>
-        <summary>...</summary>
-        <textarea readonly></textarea>
-      </details>
-    </div>
-  </section>
-  <section id="dwn-query">
-    <h1>Query for messages</h1>
-    <div class="input">
-      <pre><code>let queryResult = await web5.dwn.records.query(did.id, {
-  author: did.id,
-  message: {
-    filter: {
-      dataFormat: 'image/png',
-    },
-  },
-});</code></pre>
+      <pre><code>
+      const {record} = await web5.dwn.records.write(did.id, {
+        author: did.id,
+        data: "Hello Web5",
+        message: {
+          dataFormat: 'text/plain',
+        },
+      });
+      </code></pre>
+      <input type="text" placeholder="Enter text" disabled>
       <button disabled>Run!</button>
       <progress></progress>
     </div>
@@ -135,26 +118,32 @@ main .output {
   <section id="dwn-read">
     <h1>Read the data</h1>
     <div class="input">
-      <pre><code>let readResult = await web5.dwn.records.read(did.id, {
-  author: did.id,
-  message: {
-    recordId,
-  },
-});</code></pre>
+      <pre><code>
+        const readResult = await record.data.text();
+    </code></pre>
+      <button disabled>Run!</button>
+      <progress></progress>
+    </div>
+    <div class="output"></div>
+  </section>
+  <section id="dwn-update">
+    <h1>Update the message</h1>
+    <div class="input">
+      <pre><code>
+        const updateResult = await record.update({data: "Hello, I'm updated!"});
+      </code></pre>
+      <input type="text" placeholder="Update text" disabled>
       <button disabled>Run!</button>
       <progress></progress>
     </div>
     <div class="output"></div>
   </section>
   <section id="dwn-delete">
-    <h1>Delete the messages</h1>
+    <h1>Delete the message</h1>
     <div class="input">
-      <pre><code>let deleteResult = await web5.dwn.records.delete(did.id, {
-  author: did.id,
-  message: {
-    recordId,
-  },
-});</code></pre>
+      <pre><code>
+        const deleteResult = await record.delete();
+      </code></pre>
       <button disabled>Run!</button>
       <progress></progress>
     </div>
@@ -193,52 +182,32 @@ async function didRegister(did) {
   });
 };
 
-async function dwnWritePNGRecord(did, data) {
+async function dwnWriteTextRecord(did, data) {
   let result = await web5.dwn.records.write(did.id, {
     author: did.id,
     data,
     message: {
-      dataFormat: 'image/png',
+      dataFormat: 'text/plain',
     },
   });
   return result;
 }
 
-async function dwnQueryPNGRecords(did) {
-  let result = await web5.dwn.records.query(did.id, {
-    author: did.id,
-    message: {
-      filter: {
-        dataFormat: 'image/png',
-      },
-    },
-  });
-  return result;
+async function dwnUpdateDataFromRecordWithId(record, data) {
+  await record.update({data});
+  return await record.data.text();
 }
 
-async function dwnReadDataFromRecordWithId(did, recordId) {
-  let result = await web5.dwn.records.read(did.id, {
-    author: did.id,
-    message: {
-      recordId,
-    },
-  });
-  return result;
+async function dwnReadDataFromRecordWithId(record) {
+  return await record.data.text();
 }
 
-async function dwnDeleteRecordWithId(did, recordId) {
-  let result = await web5.dwn.records.delete(did.id, {
-    author: did.id,
-    message: {
-      recordId,
-    },
-  });
-  return result;
+async function dwnDeleteRecordWithId(record) {
+  return await record.delete();
 }
 
 /* ========== Web5 ========== */
 /* ========================== */
-
 
 
 document.querySelector('progress').remove();
@@ -252,22 +221,20 @@ let didRegisterInputButton = document.querySelector('#did-register .input button
 let didRegisterOutput = document.querySelector('#did-register .output');
 let registered = false;
 
-let dwnWriteInputFile = document.querySelector('#dwn-write .input input[type="file"]');
+let dwnWriteInputFile = document.querySelector('#dwn-write .input input[type="text"]');
 let dwnWriteInputButton = document.querySelector('#dwn-write .input button');
 let dwnWriteInputProgress = document.querySelector('#dwn-write .input progress');
 let dwnWriteOutputSummary = document.querySelector('#dwn-write .output details summary');
 let dwnWriteOutputDetailsTextarea = document.querySelector('#dwn-write .output details textarea');
 let writeResults = [ ];
 
-let dwnQueryInputButton = document.querySelector('#dwn-query .input button');
-let dwnQueryInputProgress = document.querySelector('#dwn-query .input progress');
-let dwnQueryOutputSummary = document.querySelector('#dwn-query .output details summary');
-let dwnQueryOutputDetailsTextarea = document.querySelector('#dwn-query .output details textarea');
-let queryResult = null;
-
 let dwnReadInputButton = document.querySelector('#dwn-read .input button');
 let dwnReadInputProgress = document.querySelector('#dwn-read .input progress');
 let dwnReadOutput = document.querySelector('#dwn-read .output');
+
+let dwnUpdateInputFile = document.querySelector('#dwn-update .input input[type="text"]');
+let dwnUpdateInputButton = document.querySelector('#dwn-update .input button');
+let dwnUpdateOutput = document.querySelector('#dwn-update .output');
 
 let dwnDeleteInputButton = document.querySelector('#dwn-delete .input button');
 let dwnDeleteInputProgress = document.querySelector('#dwn-delete .input progress');
@@ -282,11 +249,6 @@ function update() {
 
   if (!registered) {
     writeResults = [ ];
-    queryResult = null;
-  }
-
-  if (!queryResult?.entries?.length) {
-    deleteResults = [ ];
   }
 
   if (document.activeElement !== didCreateOutputDetailsTextarea) {
@@ -302,16 +264,9 @@ function update() {
   dwnWriteOutputSummary.innerHTML = writeResults.length ? '&#x2714; Written!' : '...';
   dwnWriteOutputDetailsTextarea.value = writeResults.length ? JSON.stringify(writeResults, null, 2) : '';
 
-  dwnQueryInputButton.disabled = !registered;
-  dwnQueryOutputSummary.innerHTML = queryResult ? `&#x2714; Found ${queryResult?.entries?.length ?? 0} entries!` : '...';
-  dwnQueryOutputDetailsTextarea.value = queryResult ? JSON.stringify(queryResult, null, 2) : '';
+  dwnReadInputButton.disabled = deleteResults.length;
 
-  dwnReadInputButton.disabled = !queryResult?.entries?.length || deleteResults.length;
-  if (!queryResult) {
-    dwnReadOutput.innerHTML = '';
-  }
-
-  dwnDeleteInputButton.disabled = !queryResult?.entries?.length || deleteResults.length;
+  dwnDeleteInputButton.disabled = deleteResults.length;
   dwnDeleteOutputSummary.innerHTML = deleteResults.length ? `&#x2714; Deleted ${deleteResults.length} entries!` : '...';
   dwnDeleteOutputDetailsTextarea.value = deleteResults.length ? JSON.stringify(deleteResults, null, 2) : '';
 }
@@ -352,30 +307,24 @@ dwnWriteInputButton.addEventListener('click', async () => {
   dwnWriteOutputDetailsTextarea.value = '';
 
   writeResults = [ ];
-  for (let file of dwnWriteInputFile.files) {
-    let buffer = await file.arrayBuffer();
-    let data = new Uint8Array(buffer);
-    let result = await dwnWritePNGRecord(did, data);
+    let result = await dwnWriteTextRecord(did, data);
     writeResults.push(result);
-  }
 
-  dwnWriteInputButton.disabled = false;
-  dwnWriteInputProgress.style.visibility = 'hidden';
+    dwnWriteInputButton.disabled = false;
+    dwnWriteInputProgress.style.visibility = 'hidden';
 
-  queryResult = null;
-  update();
+    update();
 });
 
-dwnQueryInputButton.addEventListener('click', async () => {
-  dwnQueryInputButton.disabled = true;
-  dwnQueryInputProgress.style.visibility = 'visible';
-  dwnQueryOutputSummary.innerHTML = '...';
-  dwnQueryOutputDetailsTextarea.value = '';
+dwnUpdateInputButton.addEventListener('click', async () => {
+  dwnUpdateInputButton.disabled = true;
+  dwnUpdateInputProgress.style.visibility = 'visible';
 
-  queryResult = await dwnQueryPNGRecords(did);
-
-  dwnQueryInputButton.disabled = false;
-  dwnQueryInputProgress.style.visibility = 'hidden';
+  let result = await dwnUpdateDataFromRecordWithId(writeResults[0], dwnUpdateInputFile.value)
+  
+  dwnUpdateOutput.innerHTML = result
+  dwnUpdateInputButton.disabled = false;
+  dwnUpdateInputProgress.style.visibility = 'hidden';
 
   update();
 });
@@ -385,14 +334,7 @@ dwnReadInputButton.addEventListener('click', async () => {
   dwnReadInputProgress.style.visibility = 'visible';
 
   dwnReadOutput.innerHTML = '';
-  for (let record of queryResult.entries) {
-    let result = await dwnReadDataFromRecordWithId(did, record.id);
-    let dataStream = await result.record.data.stream();
-    let dataBytes = await web5.dwn.sdk.DataStream.toBytes(dataStream);
-
-    let img = dwnReadOutput.appendChild(document.createElement('img'));
-    img.src = URL.createObjectURL(new Blob([ dataBytes ]));
-  }
+  let result = await dwnReadDataFromRecordWithId(writeResults[0]);
 
   dwnReadInputButton.disabled = false;
   dwnReadInputProgress.style.visibility = 'hidden';
@@ -407,11 +349,8 @@ dwnDeleteInputButton.addEventListener('click', async () => {
   dwnDeleteOutputDetailsTextarea.value = '';
 
   deleteResults = [ ];
-  for (let record of queryResult.entries) {
-    let result = await dwnDeleteRecordWithId(did, record.id);
-    deleteResults.push(result);
-  }
-
+  let result = await dwnDeleteRecordWithId(writeResults[0]);
+  deleteResults.push(result);
   dwnDeleteInputProgress.style.visibility = 'hidden';
 
   update();
